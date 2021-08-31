@@ -32,11 +32,5 @@ namespace StatelessClientTest.Hubs
             _gameStateManager.UnregisterUserConnection(Context.ConnectionId);
             return Task.CompletedTask;
         }
-
-        public Task UpdateControlState(PlayerControlState newState)
-        {
-            _gameStateManager.PlayerControlUpdate(Context.UserIdentifier, newState);
-            return Task.CompletedTask;
-        }
     }
 }

@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR;
-using StatelessClientTest.Hubs;
+﻿using StatelessClientTest.Hubs;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -31,14 +30,6 @@ namespace StatelessClientTest
         public void UnregisterUserConnection(string connectionid)
         {
             ActiveConnections.Remove(connectionid);
-        }
-
-        public void PlayerControlUpdate(string userid, PlayerControlState controlState)
-        {
-            if (GameState.Players.ContainsKey(userid))
-            {
-                GameState.Players[userid].ControlState = controlState;
-            }
         }
     }
 }
