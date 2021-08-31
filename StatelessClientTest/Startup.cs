@@ -22,6 +22,9 @@ namespace StatelessClientTest
             services.AddControllers();
             services.AddSignalR();
             services.AddSingleton<GameStateManager>();
+            services.AddHostedService<SimulationWorker>();
+            services.AddHostedService<ReportingWorker>();
+
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
