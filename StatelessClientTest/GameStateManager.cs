@@ -16,7 +16,7 @@ namespace StatelessClientTest
 
         private IHubContext<ConnectionHub> _hubContext;
 
-        private Dictionary<string, string> ActiveConnections;
+        private Dictionary<string, string> _activeConnections;
         private GameState State;
         private Stopwatch Timer;
 
@@ -25,7 +25,7 @@ namespace StatelessClientTest
             _hubContext = hub;
 
             State = new GameState();
-            ActiveConnections = new Dictionary<string, string>();
+            _activeConnections = new Dictionary<string, string>();
             Timer = new Stopwatch();
 
             Timer.Start();
@@ -43,12 +43,12 @@ namespace StatelessClientTest
 
         public void RegisterUserConnection(string userid, string connectionid)
         {
-            ActiveConnections.Add(connectionid, userid);
+            _activeConnections.Add(connectionid, userid);
         }
 
         public void UnregisterUserConnection(string connectionid)
         {
-            ActiveConnections.Remove(connectionid);
+            _activeConnections.Remove(connectionid);
         }
 
         private async Task SimulationThread()
@@ -67,7 +67,7 @@ namespace StatelessClientTest
         {
             while (true)
             {
-                foreach (string connectionid in ActiveConnections.Keys)
+                foreach (string connectionid in _activeConnections.Keys)
                 {
                     _ = _hubContext.Clients.Client(connectionid).SendAsync("GameStateReport", new { Timestamp = Timer.ElapsedTicks, State });
                 }
