@@ -17,14 +17,14 @@ namespace StatelessClientTest
         private IHubContext<ConnectionHub> _hubContext;
 
         private Dictionary<string, string> _activeConnections;
-        private GameState State;
+        private GameState _gameState;
         private Stopwatch Timer;
 
         public GameStateManager(IHubContext<ConnectionHub> hub)
         {
             _hubContext = hub;
 
-            State = new GameState();
+            _gameState = new GameState();
             _activeConnections = new Dictionary<string, string>();
             Timer = new Stopwatch();
 
@@ -35,9 +35,9 @@ namespace StatelessClientTest
 
         public void RegisterPlayerIfNotRegistered(string userid)
         {
-            if (!State.Players.ContainsKey(userid))
+            if (!_gameState.Players.ContainsKey(userid))
             {
-                State.Players.Add(userid, new GamePlayer());
+                _gameState.Players.Add(userid, new GamePlayer());
             }
         }
 
@@ -69,7 +69,7 @@ namespace StatelessClientTest
             {
                 foreach (string connectionid in _activeConnections.Keys)
                 {
-                    _ = _hubContext.Clients.Client(connectionid).SendAsync("GameStateReport", new { Timestamp = Timer.ElapsedTicks, State });
+                    _ = _hubContext.Clients.Client(connectionid).SendAsync("GameStateReport", new { Timestamp = Timer.ElapsedTicks, _gameState });
                 }
                 await Task.Delay(REPORT_RATE);
             }
@@ -77,7 +77,7 @@ namespace StatelessClientTest
 
         private void SimulationStep(float timeDelta)
         {
-            foreach (GamePlayer player in State.Players.Values)
+            foreach (GamePlayer player in _gameState.Players.Values)
             {
                 var speed = 1.0f;
                 if (player.ControlState.Sprinting)
@@ -102,9 +102,9 @@ namespace StatelessClientTest
 
         public void PlayerControlUpdate(string userid, PlayerControlState controlState)
         {
-            if (State.Players.ContainsKey(userid))
+            if (_gameState.Players.ContainsKey(userid))
             {
-                State.Players[userid].ControlState = controlState;
+                _gameState.Players[userid].ControlState = controlState;
             }
         }
     }
