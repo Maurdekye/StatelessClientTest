@@ -12,10 +12,6 @@
       $(async () => {
         var pen = $("#game-window")[0].getContext("2d");
 
-        function updateGameState(gameState) {
-          console.log(gameState);
-        }
-
         $("#username").keyup(async function (event) {
           if (event.keyCode === 13) {
             var connection = new signalR.HubConnectionBuilder()
@@ -24,10 +20,10 @@
 
             var last_timestamp = 0;
 
-            connection.on("GameStateReport", ({ timestamp, state }) => {
+            connection.on("GameStateReport", ({timestamp, gameState}) => {
               if (timestamp > last_timestamp) {
                 last_timestamp = timestamp;
-                updateGameState(state);
+                console.log(gameState);
               }
             });
 
