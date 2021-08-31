@@ -14,7 +14,7 @@ namespace StatelessClientTest
         public const int TICKRATE = 1000 / 64;
         public const int REPORT_RATE = 1000 / 1;
 
-        private IHubContext<ConnectionHub> Hub;
+        private IHubContext<ConnectionHub> _hubContext;
 
         private Dictionary<string, string> ActiveConnections;
         private GameState State;
@@ -22,7 +22,7 @@ namespace StatelessClientTest
 
         public GameStateManager(IHubContext<ConnectionHub> hub)
         {
-            Hub = hub;
+            _hubContext = hub;
 
             State = new GameState();
             ActiveConnections = new Dictionary<string, string>();
@@ -69,7 +69,7 @@ namespace StatelessClientTest
             {
                 foreach (string connectionid in ActiveConnections.Keys)
                 {
-                    _ = Hub.Clients.Client(connectionid).SendAsync("GameStateReport", new { Timestamp = Timer.ElapsedTicks, State });
+                    _ = _hubContext.Clients.Client(connectionid).SendAsync("GameStateReport", new { Timestamp = Timer.ElapsedTicks, State });
                 }
                 await Task.Delay(REPORT_RATE);
             }
