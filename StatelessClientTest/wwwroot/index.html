@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script src="signalr.js"></script>
+
+    <script type="text/javascript">
+      $(async () => {
+        var pen = $("#game-window")[0].getContext("2d");
+
+        function updateGameState(gameState) {
+          console.log(gameState);
+        }
+
+        $("#username").keyup(async function (event) {
+          if (event.keyCode === 13) {
+            var connection = new signalR.HubConnectionBuilder()
+              .withUrl("/conhub?user=" + $("#username").val())
+              .build();
+
+            var last_timestamp = 0;
+
+            connection.on("GameStateReport", ({ timestamp, state }) => {
+              if (timestamp > last_timestamp) {
+                last_timestamp = timestamp;
+                updateGameState(state);
+              }
+            });
+
+            await connection.start();
+          }
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <h1>Game Page</h1>
+
+    <div>
+      <input type="text" id="username" />
+    </div>
+
+    <canvas id="game-window" width="500" height="500"></canvas>
+  </body>
+</html>
