@@ -9,7 +9,7 @@ namespace StatelessClientTest
 {
     public class ReportingWorker : BackgroundService
     {
-        public const int ReportRate = 1000 / 1;
+        public const int ReportRate = 2000 / 1;
 
         private readonly IHubContext<ConnectionHub> _hubContext;
         private readonly GameStateManager _gameStateManager;
