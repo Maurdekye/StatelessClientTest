@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Hosting;
 using StatelessClientTest.Hubs;
 using System.Diagnostics;
+using System.Text.Json;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -28,7 +30,7 @@ namespace StatelessClientTest
             {
                 foreach (string connectionid in _gameStateManager.ActiveConnections.Keys)
                 {
-                    await _hubContext.Clients.Client(connectionid).SendAsync("GameStateReport", new { Timestamp = stopWatch.ElapsedTicks, _gameStateManager.GameState });
+                    await _hubContext.Clients.Client(connectionid).SendAsync("GameStateReport", stopWatch.ElapsedTicks, JsonSerializer.Serialize(_gameStateManager.GameState.Players.Select(kvp => new { Player = kvp.Key, ControlState = kvp.Value.ControlState, Position = kvp.Value.Position })));
                 }
 
                 await Task.Delay(ReportRate);

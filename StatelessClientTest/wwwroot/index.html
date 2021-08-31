@@ -20,7 +20,7 @@
 
             var last_timestamp = 0;
 
-            connection.on("GameStateReport", ({timestamp, gameState}) => {
+            connection.on("GameStateReport", (timestamp, gameState) => {
               if (timestamp > last_timestamp) {
                 last_timestamp = timestamp;
                 console.log(gameState);
