@@ -11,8 +11,8 @@ namespace StatelessClientTest
 {
     public class GameStateManager
     {
-        public const int TICKRATE = 1000 / 64;
-        public const int REPORT_RATE = 1000 / 1;
+        public const int TickRate = 1000 / 64;
+        public const int ReportRate = 1000 / 1;
 
         private IHubContext<ConnectionHub> _hubContext;
 
@@ -59,7 +59,7 @@ namespace StatelessClientTest
                 var current_tick = _stopWatch.ElapsedTicks;
                 var time_delta = (current_tick - last_tick) / Stopwatch.Frequency;
                 SimulationStep(time_delta);
-                await Task.Delay(TICKRATE);
+                await Task.Delay(TickRate);
             }
         }
 
@@ -71,7 +71,7 @@ namespace StatelessClientTest
                 {
                     _ = _hubContext.Clients.Client(connectionid).SendAsync("GameStateReport", new { Timestamp = _stopWatch.ElapsedTicks, _gameState });
                 }
-                await Task.Delay(REPORT_RATE);
+                await Task.Delay(ReportRate);
             }
         }
 
