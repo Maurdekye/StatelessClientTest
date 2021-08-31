@@ -24,7 +24,6 @@ namespace StatelessClientTest
             services.AddSingleton<GameStateManager>();
             services.AddHostedService<SimulationWorker>();
             services.AddHostedService<ReportingWorker>();
-
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -35,6 +34,7 @@ namespace StatelessClientTest
             }
 
             app.UseHttpsRedirection();
+            app.UseDefaultFiles();
             app.UseStaticFiles();
 
             app.UseRouting();
