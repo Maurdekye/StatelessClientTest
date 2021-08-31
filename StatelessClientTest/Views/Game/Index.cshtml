@@ -1,0 +1,44 @@
+﻿
+@{
+    ViewData["Title"] = "Game Page";
+}
+
+<h1>Game Page</h1>
+
+<div class="vflex" id="container">
+    <div class="flex"></div>
+    <div class="hflex">
+        <div class="flex"></div>
+        <div>
+            <canvas id="game-window" width="500" height="500"></canvas>
+        </div>
+        <div class="flex"></div>
+    </div>
+    <div class="flex"></div>
+</div>
+
+@section Scripts{
+    <script type="text/javascript">
+        $(async () => {
+
+            var pen = $("#game-window")[0].getContext("2d");
+
+            function updateGameState(gameState) {
+                console.log(gameState);
+            }
+
+            var connection = new signalR.HubConnectionBuilder().withUrl("/conhub").build();
+
+            var last_timestamp = 0;
+
+            connection.on("GameStateReport", ({ timestamp, state }) => {
+                if (timestamp > last_timestamp) {
+                    last_timestamp = timestamp;
+                    updateGameState(state);
+                }
+            });
+
+            await connection.start();
+        });
+    </script>
+}
