@@ -18,7 +18,7 @@ namespace StatelessClientTest
 
         private Dictionary<string, string> _activeConnections;
         private GameState _gameState;
-        private Stopwatch Timer;
+        private Stopwatch _stopWatch;
 
         public GameStateManager(IHubContext<ConnectionHub> hub)
         {
@@ -26,9 +26,9 @@ namespace StatelessClientTest
 
             _gameState = new GameState();
             _activeConnections = new Dictionary<string, string>();
-            Timer = new Stopwatch();
+            _stopWatch = new Stopwatch();
 
-            Timer.Start();
+            _stopWatch.Start();
             _ = SimulationThread();
             _ = ReportingThread();
         }
@@ -53,10 +53,10 @@ namespace StatelessClientTest
 
         private async Task SimulationThread()
         {
-            var last_tick = Timer.ElapsedTicks;
+            var last_tick = _stopWatch.ElapsedTicks;
             while (true)
             {
-                var current_tick = Timer.ElapsedTicks;
+                var current_tick = _stopWatch.ElapsedTicks;
                 var time_delta = (current_tick - last_tick) / Stopwatch.Frequency;
                 SimulationStep(time_delta);
                 await Task.Delay(TICKRATE);
@@ -69,7 +69,7 @@ namespace StatelessClientTest
             {
                 foreach (string connectionid in _activeConnections.Keys)
                 {
-                    _ = _hubContext.Clients.Client(connectionid).SendAsync("GameStateReport", new { Timestamp = Timer.ElapsedTicks, _gameState });
+                    _ = _hubContext.Clients.Client(connectionid).SendAsync("GameStateReport", new { Timestamp = _stopWatch.ElapsedTicks, _gameState });
                 }
                 await Task.Delay(REPORT_RATE);
             }
