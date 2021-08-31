@@ -8,42 +8,35 @@ using System.Threading.Tasks;
 
 namespace StatelessClientTest.Hubs
 {
-    [Authorize]
     public class ConnectionHub : Hub
     {
-        public GameStateManager Game;
+        public readonly GameStateManager _gameStateManager;
 
-        public ConnectionHub(GameStateManager game) 
+        public ConnectionHub(GameStateManager gameStateManager) 
         {
-            Game = game;
+            _gameStateManager = gameStateManager;
         }
 
-        public override async Task OnConnectedAsync()
+        public override Task OnConnectedAsync()
         {
-            var userid = Context.UserIdentifier;
+            var userid = Context.GetHttpContext().Request.Query["username"].ToString();
             
-            Game.RegisterPlayerIfNotRegistered(userid);
-            Game.RegisterUserConnection(userid, Context.ConnectionId);
+            _gameStateManager.RegisterPlayerIfNotRegistered(userid);
+            _gameStateManager.RegisterUserConnection(userid, Context.ConnectionId);
+
+            return Task.CompletedTask;
         }
 
-        public override async Task OnDisconnectedAsync(Exception exc)
+        public override Task OnDisconnectedAsync(Exception exc)
         {
-            Game.UnregisterUserConnection(Context.ConnectionId);
+            _gameStateManager.UnregisterUserConnection(Context.ConnectionId);
+            return Task.CompletedTask;
         }
 
-        public async Task UpdateControlState(PlayerControlState newState)
+        public Task UpdateControlState(PlayerControlState newState)
         {
-            Game.PlayerControlUpdate(Context.UserIdentifier, newState);
-        }
-
-        public async Task<string> GetName()
-        {
-            return Context.User.Identity.Name;
-        }
-
-        public async Task<string> GetConnectionId()
-        {
-            return Context.ConnectionId;
+            _gameStateManager.PlayerControlUpdate(Context.UserIdentifier, newState);
+            return Task.CompletedTask;
         }
     }
 }
