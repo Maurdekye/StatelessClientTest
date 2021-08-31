@@ -15,7 +15,7 @@
         $("#username").keyup(async function (event) {
           if (event.keyCode === 13) {
             var connection = new signalR.HubConnectionBuilder()
-              .withUrl("/conhub?user=" + $("#username").val())
+              .withUrl("/conhub?username=" + $("#username").val())
               .build();
 
             var last_timestamp = 0;
