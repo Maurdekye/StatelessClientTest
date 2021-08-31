@@ -100,11 +100,11 @@ namespace StatelessClientTest
             }
         }
 
-        public void PlayerControlUpdate(string username, PlayerControlState controlState)
+        public void PlayerControlUpdate(string userid, PlayerControlState controlState)
         {
-            if (State.Players.ContainsKey(username))
+            if (State.Players.ContainsKey(userid))
             {
-                State.Players[username].ControlState = controlState;
+                State.Players[userid].ControlState = controlState;
             }
         }
     }

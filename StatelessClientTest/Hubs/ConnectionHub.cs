@@ -31,6 +31,11 @@ namespace StatelessClientTest.Hubs
             Game.UnregisterUserConnection(Context.ConnectionId);
         }
 
+        public async Task UpdateControlState(PlayerControlState newState)
+        {
+            Game.PlayerControlUpdate(Context.UserIdentifier, newState);
+        }
+
         public async Task<string> GetName()
         {
             return Context.User.Identity.Name;
