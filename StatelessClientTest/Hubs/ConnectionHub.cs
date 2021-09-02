@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -11,29 +12,39 @@ namespace StatelessClientTest.Hubs
     [Authorize]
     public class ConnectionHub : Hub
     {
-        public GameStateManager Game;
+        public Game.GameStateManager GameManager;
 
-        public ConnectionHub(GameStateManager game) 
+        public ConnectionHub(Game.GameStateManager game) 
         {
-            Game = game;
-        }
-
-        public override async Task OnConnectedAsync()
-        {
-            var userid = Context.UserIdentifier;
-            
-            Game.RegisterPlayerIfNotRegistered(userid);
-            Game.RegisterUserConnection(userid, Context.ConnectionId);
+            GameManager = game;
         }
 
         public override async Task OnDisconnectedAsync(Exception exc)
         {
-            Game.UnregisterUserConnection(Context.ConnectionId);
+            GameManager.UnregisterUserConnection(Context.ConnectionId);
         }
 
-        public async Task UpdateControlState(PlayerControlState newState)
+        public async Task RegisterUser()
         {
-            Game.PlayerControlUpdate(Context.UserIdentifier, newState);
+            var userid = Context.UserIdentifier;
+
+            GameManager.RegisterPlayerIfNotRegistered(userid, Context.User.Identity.Name);
+            GameManager.RegisterUserConnection(userid, Context.ConnectionId);
+        }
+
+        public async Task UpdateControlState(Dictionary<string, bool> newState)
+        {
+            GameManager.PlayerControlUpdate(Context.UserIdentifier, newState);
+        }
+
+        public async Task<Vector2> GetPlayAreaDimensions()
+        {
+            return Game.GameStateManager.PLAY_AREA;
+        }
+
+        public async Task SendProjectile(Vector2 target)
+        {
+            GameManager.TryFireProjectile(Context.UserIdentifier, target);
         }
 
         public async Task<string> GetName()

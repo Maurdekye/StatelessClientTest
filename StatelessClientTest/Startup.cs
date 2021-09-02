@@ -36,8 +36,8 @@ namespace StatelessClientTest
             services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             services.AddControllersWithViews();
-            services.AddSignalR();
-            services.AddSingleton<GameStateManager>();
+            services.AddSignalR().AddNewtonsoftJsonProtocol();
+            services.AddSingleton<Game.GameStateManager>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -19,18 +19,110 @@
 
 @section Scripts{
     <script type="text/javascript">
+
+        const keybinds = {
+            "KeyW": "up",
+            "ArrowUp": "up",
+            "KeyS": "down",
+            "ArrowDown": "down",
+            "KeyA": "left",
+            "ArrowLeft": "left",
+            "KeyD": "right",
+            "ArrowRight": "right",
+            "ShiftLeft": "sprinting",
+            "ShiftRight": "sprinting",
+            "ControlLeft": "sneaking",
+            "ControlRight": "sneaking"
+        };
+
         $(async () => {
-
-            var pen = $("#game-window")[0].getContext("2d");
-
-            function updateGameState(gameState) {
-                console.log(gameState);
+            
+            function toCanvasSpace(pos) {
+                return {
+                    x: pos.x * (canv.width / play_area.x),
+                    y: canv.height - pos.y * (canv.height / play_area.y)
+                };
             }
 
+            function toGameSpace(pos) {
+                return {
+                    x: pos.x * (play_area.x / canv.width),
+                    y: play_area.y - pos.y * (play_area.y / canv.height)
+                };
+            }
+
+            function addVec(vec1, vec2) {
+                return {
+                    x: vec1.x + vec2.x,
+                    y: vec1.y + vec2.y
+                };
+            }
+
+            function scaleVec(vec, scalar) {
+                return {
+                    x: vec.x * scalar,
+                    y: vec.y * scalar
+                };
+            }
+
+            function subVec(vec1, vec2) {
+                return addVec(vec1, scaleVec(vec2, -1));
+            }
+            
             var connection = new signalR.HubConnectionBuilder().withUrl("/conhub").build();
+            
+            var canv = $("#game-window")[0];
+            var pen = canv.getContext("2d");
+            let last_timestamp = 0;
+            var control_state = {};
+            var keypresses = {};
+            var reverse_binds = {}
+            let play_area;
 
-            var last_timestamp = 0;
+            for (var code in keybinds) {
+                var control = keybinds[code];
+                keypresses[code] = false;
+                control_state[control] = false;
+                reverse_binds[control] = (reverse_binds[control] || []).concat([code]);
+            }
+            
+            function updateGameState(gameState) {
+                //console.log(gameState);
+                pen.clearRect(0, 0, canv.width, canv.height);
 
+                // draw players
+                pen.fillStyle = "#000";
+                for (let id in gameState.players) {
+                    let player = gameState.players[id];
+                    let ply_pos = toCanvasSpace(player.position);
+
+                    pen.beginPath();
+                    pen.arc(ply_pos.x, ply_pos.y, 4, 0, Math.PI * 2);
+                    pen.fill();
+
+                    //let arrow_pos = toCanvasSpace(addVec(player.position, scaleVec(player.direction, 0.5)));
+                    //pen.beginPath();
+                    //pen.moveTo(ply_pos.x, ply_pos.y);
+                    //pen.lineTo(arrow_pos.x, arrow_pos.y);
+                    //pen.stroke();
+
+                    pen.font = '8pt Arial';
+                    pen.fillText(player.name, ply_pos.x - (pen.measureText(player.name).width / 2), ply_pos.y - 10);
+                }
+
+                // draw projectiles
+                pen.strokeStyle = "#800";
+                for (let proj of gameState.projectiles) {
+                    let a = toCanvasSpace(subVec(proj.position, scaleVec(proj.direction, 0.1)));
+                    let b = toCanvasSpace(addVec(proj.position, scaleVec(proj.direction, 0.1)));
+                    pen.beginPath()
+                    //pen.arc(pos.x, pos.y, 2, 0, Math.PI * 2);
+                    pen.moveTo(a.x, a.y);
+                    pen.lineTo(b.x, b.y);
+                    pen.stroke();
+                }
+            }
+            
             connection.on("GameStateReport", ({ timestamp, state }) => {
                 if (timestamp > last_timestamp) {
                     last_timestamp = timestamp;
@@ -39,6 +131,35 @@
             });
 
             await connection.start();
+            
+            await connection.invoke("RegisterUser");
+
+            play_area = await connection.invoke("GetPlayAreaDimensions");
+            
+            // strange functionality with shift keys; all keyup events for one are swallowed if holding the other down
+            // causes an unintended stuck-key bug
+            function updateInput(event, is_pressed) {
+                if (event.code in keybinds) {
+                    event.preventDefault();
+                    keypresses[event.code] = is_pressed;
+                    var control = keybinds[event.code];
+                    old_state = control_state[control]
+                    new_state = reverse_binds[control].some(c => keypresses[c])
+                    if (old_state != new_state) {
+                        control_state[control] = new_state;
+                        connection.invoke("UpdateControlState", control_state);
+                    }
+                }
+            }
+
+            $(document).keydown(e => updateInput(e, true));
+            $(document).keyup(e => updateInput(e, false));
+
+            $("#game-window").click(e => {
+                let aim_target = toGameSpace({ x: e.offsetX, y: e.offsetY });
+                connection.invoke("SendProjectile", aim_target);
+            });
+            
         });
     </script>
 }

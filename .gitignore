@@ -1,3 +1,4 @@
 .vs/*
-*/bin/*
-*/obj/*
+StatelessClientTest/bin/*
+StatelessClientTest/obj/*
+*.*proj.user

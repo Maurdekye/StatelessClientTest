@@ -87,3 +87,7 @@ body {
 #container {
     min-height: 600px;
 }
+
+#game-window {
+    border: 1px solid black;
+}
