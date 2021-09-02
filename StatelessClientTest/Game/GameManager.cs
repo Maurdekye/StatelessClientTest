@@ -16,7 +16,6 @@ namespace StatelessClientTest.Game
         public const int TICK_RATE = 1000 / 128;
         public const int REPORT_RATE = 1000 / 60;
         public static Vector2 PLAY_AREA_SIZE = new Vector2(10, 10);
-        public static Vector2 SPAWN_POSITION = PLAY_AREA_SIZE / 2;
 
         private IHubContext<ConnectionHub> Hub;
 
@@ -25,6 +24,7 @@ namespace StatelessClientTest.Game
         public Dictionary<string, Player> Players;
         public GameState State { get; private set; }
         public Stopwatch Timer { get; private set; }
+        public Random Rng { get; private set; }
 
         private readonly object ConnectionAccessLock = new object();
 
@@ -42,6 +42,7 @@ namespace StatelessClientTest.Game
             NewEntityBuffer = new Queue<Entity>();
             Players = new Dictionary<string, Player>();
             Timer = new Stopwatch();
+            Rng = new Random();
 
             Timer.Start();
             _ = SimulationThread();
@@ -70,7 +71,7 @@ namespace StatelessClientTest.Game
             {
                 if (Players.ContainsKey(userid) && Players[userid].Defeated)
                 {
-                    Players[userid].Revive(SPAWN_POSITION);
+                    Players[userid].Revive(GetSpawnPosition());
                 }
             }
         }
@@ -81,7 +82,7 @@ namespace StatelessClientTest.Game
             {
                 if (!Players.ContainsKey(userid))
                 {
-                    var new_player = new Player(this, userid, name, SPAWN_POSITION);
+                    var new_player = new Player(this, userid, name, GetSpawnPosition());
                     Players.Add(userid, new_player);
                     QueueNewEntity(new_player);
                 }
@@ -103,6 +104,11 @@ namespace StatelessClientTest.Game
                     }
                 }
             }
+        }
+
+        public Vector2 GetSpawnPosition()
+        {
+            return new Vector2((float)Rng.NextDouble(), (float)Rng.NextDouble()) * new Vector2(PLAY_AREA_SIZE.X - 2, PLAY_AREA_SIZE.Y - 2) + new Vector2(1, 1);
         }
 
         private async Task SimulationThread()
