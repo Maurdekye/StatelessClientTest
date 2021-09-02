@@ -37,7 +37,7 @@ namespace StatelessClientTest
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             services.AddControllersWithViews();
             services.AddSignalR().AddNewtonsoftJsonProtocol();
-            services.AddSingleton<Game.GameStateManager>();
+            services.AddSingleton<Game.GameManager>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

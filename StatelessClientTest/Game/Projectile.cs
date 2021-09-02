@@ -2,19 +2,19 @@
 
 namespace StatelessClientTest.Game
 {
-    public class Projectile : GameEntity
+    public class Projectile : Entity
     {
 
-        public const float SPEED = 12f;
+        public readonly float SPEED = 12f;
         public string EntityType => "Projectile";
-        public float Radius => 0.2f;
+        public float Radius => 0.01f;
 
-        public GamePlayer Firer { get; }
+        public Player Firer { get; }
         public Vector2 Position { get; private set; }
         public Vector2 Direction { get; }
         public bool Impacted;
 
-        public Projectile(GamePlayer firer, Vector2 position, Vector2 direction)
+        public Projectile(Player firer, Vector2 position, Vector2 direction)
         {
             Firer = firer;
             Position = position;
@@ -32,16 +32,14 @@ namespace StatelessClientTest.Game
             return Impacted 
                 || Position.X < 0 
                 || Position.Y < 0 
-                || Position.X > GameStateManager.PLAY_AREA_SIZE.X 
-                || Position.Y > GameStateManager.PLAY_AREA_SIZE.Y;
+                || Position.X > GameManager.PLAY_AREA_SIZE.X 
+                || Position.Y > GameManager.PLAY_AREA_SIZE.Y;
         }
 
-        public void Collide(GameEntity other)
+        public void Collide(Entity other, Vector2 point)
         {
-            if (other is GamePlayer && (GamePlayer)other != Firer)
-            {
+            if (other is Player && ((Player)other) != Firer)
                 Impacted = true;
-            }
         }
     }
 }

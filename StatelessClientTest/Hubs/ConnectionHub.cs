@@ -12,9 +12,9 @@ namespace StatelessClientTest.Hubs
     [Authorize]
     public class ConnectionHub : Hub
     {
-        public Game.GameStateManager GameManager;
+        public Game.GameManager GameManager;
 
-        public ConnectionHub(Game.GameStateManager game) 
+        public ConnectionHub(Game.GameManager game) 
         {
             GameManager = game;
         }
@@ -39,7 +39,7 @@ namespace StatelessClientTest.Hubs
 
         public async Task<Vector2> GetPlayAreaDimensions()
         {
-            return Game.GameStateManager.PLAY_AREA_SIZE;
+            return Game.GameManager.PLAY_AREA_SIZE;
         }
 
         public async Task SendProjectile(Vector2 target)
@@ -52,9 +52,19 @@ namespace StatelessClientTest.Hubs
             return Context.User.Identity.Name;
         }
 
+        public async Task<string> GetId()
+        {
+            return Context.UserIdentifier;
+        }
+
         public async Task<string> GetConnectionId()
         {
             return Context.ConnectionId;
+        }
+
+        public async Task Revive()
+        {
+            GameManager.TryRevivePlayer(Context.UserIdentifier);
         }
     }
 }

@@ -3,10 +3,26 @@
     ViewData["Title"] = "Game Page";
 }
 
-<h1>Game Page</h1>
-
 <div class="vflex" id="container">
-    <div class="flex"></div>
+    <div class="flex hflex">
+        <div class="flex"></div>
+        <div>
+            <h2 id="score-display" class="counter-text">Score: 0</h2>
+        </div>
+        <div class="flex"></div>
+        <div>
+            <h2 id="death-display" class="counter-text">Deaths: 0</h2>
+        </div>
+        <div class="flex"></div>
+        <div class="vflex">
+            <div class="flex"></div>
+            <div>
+                <input type="button" value="Revive" id="revive-button" disabled />
+            </div>
+            <div class="flex"></div>
+        </div>
+        <div class="flex"></div>
+    </div>
     <div class="hflex">
         <div class="flex"></div>
         <div>
@@ -36,6 +52,10 @@
         };
 
         $(async () => {
+
+            function toCanvasScale(val) {
+                return toCanvasSpace({ x: val, y: 0 }).x;
+            }
             
             function toCanvasSpace(pos) {
                 return {
@@ -70,6 +90,7 @@
             }
             
             var connection = new signalR.HubConnectionBuilder().withUrl("/conhub").build();
+            await connection.start();
             
             var canv = $("#game-window")[0];
             var pen = canv.getContext("2d");
@@ -77,7 +98,8 @@
             var control_state = {};
             var keypresses = {};
             var reverse_binds = {}
-            let play_area;
+            var play_area = await connection.invoke("GetPlayAreaDimensions");
+            var id = await connection.invoke("GetId");
 
             for (var code in keybinds) {
                 var control = keybinds[code];
@@ -87,38 +109,58 @@
             }
             
             function updateGameState(gameState) {
-/*                console.log(gameState);*/
                 pen.clearRect(0, 0, canv.width, canv.height);
 
                 for (let entity of gameState.entities) {
+                    let radius = toCanvasScale(entity.radius);
+
                     // draw players
                     if (entity.entityType === "Player") {
                         let player = entity;
                         
                         let pos = toCanvasSpace(player.position);
 
-                        pen.fillStyle = "#000";
                         pen.beginPath();
-                        pen.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
-                        pen.fill();
+                        if (player.defeated) {
+                            pen.moveTo(pos.x - radius, pos.y - radius);
+                            pen.lineTo(pos.x + radius, pos.y + radius);
+                            pen.moveTo(pos.x + radius, pos.y - radius);
+                            pen.lineTo(pos.x - radius, pos.y + radius);
+                            pen.strokeStyle = "#000";
+                            pen.stroke();
+                        } else {
+                            pen.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                            pen.fillStyle = "#000";
+                            pen.fill();
+                        }
 
                         pen.font = '8pt Arial';
-                        pen.fillText(player.name, pos.x - (pen.measureText(player.name).width / 2), pos.y - 10);
+                        pen.fillStyle = "#000";
+                        pen.fillText(player.name, pos.x - (pen.measureText(player.name).width / 2), pos.y - radius - 6);
+
+                        if (player.id === id) {
+                            $("#score-display").html(`Score: ${player.score}`);
+                            $("#death-display").html(`Deaths: ${player.deaths}`);
+                            $("#revive-button").prop("disabled", !player.defeated);
+                        }
 
                     // draw projectiles
                     } else if (entity.entityType === "Projectile") {
                         let projectile = entity;
 
-                        pen.strokeStyle = "#800";
-                        let a = toCanvasSpace(subVec(projectile.position, scaleVec(projectile.direction, 0.1)));
-                        let b = toCanvasSpace(addVec(projectile.position, scaleVec(projectile.direction, 0.1)));
+                        let length = projectile.speed * projectile.radius;
+                        let a = toCanvasSpace(subVec(projectile.position, scaleVec(projectile.direction, length)));
+                        let b = toCanvasSpace(addVec(projectile.position, scaleVec(projectile.direction, length)));
                         pen.beginPath()
                         pen.moveTo(a.x, a.y);
                         pen.lineTo(b.x, b.y);
+                        pen.strokeStyle = "#800";
                         pen.stroke();
                     }
                 }
             }
+
+            await connection.invoke("RegisterUser");
             
             connection.on("GameStateReport", ({ timestamp, state }) => {
                 if (timestamp > last_timestamp) {
@@ -127,12 +169,6 @@
                 }
             });
 
-            await connection.start();
-            
-            await connection.invoke("RegisterUser");
-
-            play_area = await connection.invoke("GetPlayAreaDimensions");
-            
             // strange functionality with shift keys; all keyup events for one are swallowed if holding the other down
             // causes an unintended stuck-key bug
             function updateInput(event, is_pressed) {
@@ -155,6 +191,10 @@
             $("#game-window").click(e => {
                 let aim_target = toGameSpace({ x: e.offsetX, y: e.offsetY });
                 connection.invoke("SendProjectile", aim_target);
+            });
+
+            $("#revive-button").click(() => {
+                connection.invoke("Revive");
             });
             
         });

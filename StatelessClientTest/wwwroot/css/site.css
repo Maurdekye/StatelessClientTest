@@ -72,12 +72,12 @@ body {
 
 .hflex {
     display: flex;
-    flex-flow: row;
+    flex-flow: column;
 }
 
 .vflex {
     display: flex;
-    flex-flow: column;
+    flex-flow: row;
 }
 
 .flex {
@@ -85,9 +85,41 @@ body {
 }
 
 #container {
-    min-height: 600px;
+    min-height: 700px;
 }
 
 #game-window {
     border: 1px solid black;
+}
+
+.counter-text {
+    text-align: center;
+}
+
+#revive-button {
+    padding: 10px 20px;
+    border: 2px solid #000;
+    border-radius: 4px;
+    text-decoration: none;
+    text-align: center;
+    font-family: Arial;
+    color: #b1b1b1;
+    font-size: 24pt;
+    transition: all 0.08s;
+}
+
+#revive-button:disabled {
+    color: #747474;
+    background-color: #d5d4d4;
+    border-color: #b1b1b1
+}
+
+#revive-button:hover:enabled {
+    color: #000;
+    background-color: #53edf2;
+}
+
+#revive-button:hover:active {
+    color: #000;
+    background-color: #dbfeff;
 }

@@ -6,21 +6,23 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using System.Security.Principal;
 using System.Threading.Tasks;
 
 namespace StatelessClientTest.Game
 {
-    public class GameStateManager
+    public class GameManager
     {
         public const int TICK_RATE = 1000 / 128;
-        public const int REPORT_RATE = 1000 / 4;
+        public const int REPORT_RATE = 1000 / 60;
         public static Vector2 PLAY_AREA_SIZE = new Vector2(10, 10);
+        public static Vector2 SPAWN_POSITION = PLAY_AREA_SIZE / 2;
 
         private IHubContext<ConnectionHub> Hub;
 
         private Dictionary<string, string> ActiveConnections;
-        private Queue<GameEntity> NewEntityBuffer;
-        public Dictionary<string, GamePlayer> Players;
+        private Queue<Entity> NewEntityBuffer;
+        public Dictionary<string, Player> Players;
         public GameState State { get; private set; }
         public Stopwatch Timer { get; private set; }
 
@@ -31,14 +33,14 @@ namespace StatelessClientTest.Game
         private readonly object EntityAccessLock = new object();
 
 
-        public GameStateManager(IHubContext<ConnectionHub> hub)
+        public GameManager(IHubContext<ConnectionHub> hub)
         {
             Hub = hub;
 
             State = new GameState();
             ActiveConnections = new Dictionary<string, string>();
-            NewEntityBuffer = new Queue<GameEntity>();
-            Players = new Dictionary<string, GamePlayer>();
+            NewEntityBuffer = new Queue<Entity>();
+            Players = new Dictionary<string, Player>();
             Timer = new Stopwatch();
 
             Timer.Start();
@@ -62,13 +64,24 @@ namespace StatelessClientTest.Game
             }
         }
 
+        public void TryRevivePlayer(string userid)
+        {
+            lock (PlayerAccessLock) lock (EntityAccessLock)
+            {
+                if (Players.ContainsKey(userid) && Players[userid].Defeated)
+                {
+                    Players[userid].Revive(SPAWN_POSITION);
+                }
+            }
+        }
+
         public void TryAddNewPlayer(string userid, string name)
         {
             lock (PlayerAccessLock)
             {
                 if (!Players.ContainsKey(userid))
                 {
-                    var new_player = new GamePlayer(this, name, PLAY_AREA_SIZE / 2);
+                    var new_player = new Player(this, userid, name, SPAWN_POSITION);
                     Players.Add(userid, new_player);
                     QueueNewEntity(new_player);
                 }
@@ -81,7 +94,7 @@ namespace StatelessClientTest.Game
             {
                 if (Players.ContainsKey(userid))
                 {
-                    GamePlayer player = Players[userid];
+                    Player player = Players[userid];
                     Players.Remove(userid);
 
                     lock (EntityAccessLock)
@@ -136,7 +149,7 @@ namespace StatelessClientTest.Game
             // state updates
             lock (EntityAccessLock)
             {
-                foreach (GameEntity entity in State.Entities)
+                foreach (Entity entity in State.Entities)
                 {
                     entity.Update(timeDelta);
                 }
@@ -148,16 +161,26 @@ namespace StatelessClientTest.Game
             // collision checks
             lock (EntityAccessLock)
             {
-                foreach (GameEntity entity1 in State.Entities)
+                foreach (Entity entity1 in State.Entities.Where(e => e.CollisionsEnabled))
                 {
-                    foreach (GameEntity entity2 in State.Entities.SkipWhile(e => e != entity1).Skip(1))
+                    foreach (Entity entity2 in State.Entities.Where(e => e.CollisionsEnabled).SkipWhile(e => e != entity1).Skip(1))
                     {
                         var sq_dist = entity1.Radius + entity2.Radius;
                         sq_dist *= sq_dist;
                         if (Vector2.DistanceSquared(entity1.Position, entity2.Position) < sq_dist)
                         {
-                            entity1.Collide(entity2);
-                            entity2.Collide(entity1);
+                            Vector2 collision_point;
+                            if (entity1.Position == entity2.Position)
+                                collision_point = entity1.Position;
+                            else
+                            {
+                                var delta = Vector2.Normalize(entity2.Position - entity1.Position);
+                                var point_a = entity1.Position + delta * entity1.Radius;
+                                var point_b = entity2.Position - delta * entity2.Radius;
+                                collision_point = (point_a + point_b) / 2;
+                            }
+                            entity1.Collide(entity2, collision_point);
+                            entity2.Collide(entity1, collision_point);
                         }
                     }
                 }
@@ -191,7 +214,7 @@ namespace StatelessClientTest.Game
             }
         }
 
-        public void QueueNewEntity(GameEntity entity)
+        public void QueueNewEntity(Entity entity)
         {
             lock (EntityAccessLock)
             {
@@ -199,7 +222,7 @@ namespace StatelessClientTest.Game
             }
         }
 
-        public void SendProjectile(GamePlayer sender, Vector2 target)
+        public void SendProjectile(Player sender, Vector2 target)
         {
             lock (EntityAccessLock)
             {
@@ -210,11 +233,11 @@ namespace StatelessClientTest.Game
 
         public class GameState
         {
-            public List<GameEntity> Entities;
+            public List<Entity> Entities;
 
             public GameState()
             {
-                Entities = new List<GameEntity>();
+                Entities = new List<Entity>();
             }
         }
     }

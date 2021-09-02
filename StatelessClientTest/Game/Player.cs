@@ -6,7 +6,7 @@ using System.Numerics;
 
 namespace StatelessClientTest.Game
 {
-    public class GamePlayer : GameEntity
+    public class Player : Entity
     {
         public const int MAX_BUFFERED_ACTIONS = 1;
         public const float BASE_SPEED = 1.5f;
@@ -15,31 +15,36 @@ namespace StatelessClientTest.Game
         public const float ACCELERATION = 3f;
         public const float FIRE_RATE = 0.25f;
         public readonly string[] CONTROL_NAMES = new string[] { "up", "down", "left", "right", "sprinting", "sneaking" };
-        public float Radius => 0.5f;
+        public float Radius => 0.08f;
         public string EntityType => "Player";
 
+        public string Id;
         public string Name;
         public Vector2 Position { get; set; }
         public Vector2 Direction { get; private set; }
         public int Score { get; private set; }
+        public int Deaths { get; private set; }
         public long LastProjectile;
         public bool Defeated;
+        public bool CollisionsEnabled { get; private set; }
 
         [JsonIgnore]
         internal Dictionary<string, PlayerControl> ControlState;
         [JsonIgnore]
-        public GameStateManager Manager;
+        public GameManager Manager;
         [JsonIgnore]
         public Queue<PlayerAction> ProjectileBuffer;
 
-        public GamePlayer(GameStateManager manager, string name, Vector2 position)
+        public Player(GameManager manager, string id, string name, Vector2 position)
         {
+            Id = id;
             Name = name;
             Position = position;
             Direction = new Vector2(0, 0);
             Score = 0;
             LastProjectile = 0;
             Defeated = false;
+            CollisionsEnabled = true;
 
             ControlState = new Dictionary<string, PlayerControl>();
             Manager = manager;
@@ -51,7 +56,7 @@ namespace StatelessClientTest.Game
             }
         }
 
-        public GamePlayer(GameStateManager manager, string name) : this(manager, name, new Vector2(0, 0)) { }
+        public Player(GameManager manager, string id, string name) : this(manager, id, name, new Vector2(0, 0)) { }
 
         public void Update(float timeDelta)
         {   
@@ -88,8 +93,8 @@ namespace StatelessClientTest.Game
             Position += movement;
 
             Position = new Vector2(
-                Math.Clamp(Position.X, 0, GameStateManager.PLAY_AREA_SIZE.X),
-                Math.Clamp(Position.Y, 0, GameStateManager.PLAY_AREA_SIZE.Y)
+                Math.Clamp(Position.X, Radius, GameManager.PLAY_AREA_SIZE.X - Radius),
+                Math.Clamp(Position.Y, Radius, GameManager.PLAY_AREA_SIZE.Y - Radius)
             );
         }
 
@@ -147,6 +152,8 @@ namespace StatelessClientTest.Game
         public void Defeat()
         {
             Defeated = true;
+            CollisionsEnabled = false;
+            Deaths += 1;
             foreach (var control in CONTROL_NAMES)
             {
                 ControlState[control].Pressed = false;
@@ -156,6 +163,7 @@ namespace StatelessClientTest.Game
         public void Revive(Vector2 position)
         {
             Defeated = false;
+            CollisionsEnabled = true;
             Position = position;
             foreach (var control in CONTROL_NAMES)
             {
@@ -163,17 +171,27 @@ namespace StatelessClientTest.Game
             }
         }
 
-        public bool ShouldDestroy()
-        {
-            return false;
-        }
+        public bool ShouldDestroy() => false;
 
-        public void Collide(GameEntity other)
+        public void Collide(Entity other, Vector2 point)
         {
-            if (other is Projectile && ((Projectile)other).Firer != this)
+            if (other is Projectile)
             {
-                Defeat();
-                ((Projectile)other).Firer.Score += 1;
+                var projectile = (Projectile)other;
+                if (projectile.Firer != this)
+                {
+                    Defeat();
+                    projectile.Firer.Score += 1;
+                }
+            }
+            else if (other is Player)
+            {
+                var player = (Player)other;
+                var dist = Vector2.Distance(Position, player.Position);
+                if (dist < Radius + player.Radius && player.Position != point)
+                {
+                    Position = point + Vector2.Normalize(point - player.Position) * Radius;
+                }
             }
         }
     }
