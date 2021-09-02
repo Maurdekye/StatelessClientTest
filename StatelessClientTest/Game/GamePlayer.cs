@@ -6,36 +6,48 @@ using System.Numerics;
 
 namespace StatelessClientTest.Game
 {
-    public class GamePlayer
+    public class GamePlayer : GameEntity
     {
         public const int MAX_BUFFERED_ACTIONS = 1;
+        public const float BASE_SPEED = 1.5f;
+        public const float SNEAK_SPEED = 0.6f;
+        public const float SPRINT_SPEED = 3f;
+        public const float ACCELERATION = 3f;
+        public const float FIRE_RATE = 0.25f;
+        public readonly string[] CONTROL_NAMES = new string[] { "up", "down", "left", "right", "sprinting", "sneaking" };
+        public float Radius => 0.5f;
+        public string EntityType => "Player";
 
         public string Name;
-        public Vector2 Position;
+        public Vector2 Position { get; set; }
         public Vector2 Direction { get; private set; }
-        public long lastProjectile;
+        public int Score { get; private set; }
+        public long LastProjectile;
+        public bool Defeated;
 
-        //public bool ShouldSerializeControlState() => false;
         [JsonIgnore]
         internal Dictionary<string, PlayerControl> ControlState;
-        //public bool ShouldSerializeManager() => false;
         [JsonIgnore]
         public GameStateManager Manager;
-        //public bool ShouldSerializeActionBuffer() => false;
         [JsonIgnore]
-        public List<PlayerAction> ProjectileBuffer;
+        public Queue<PlayerAction> ProjectileBuffer;
 
         public GamePlayer(GameStateManager manager, string name, Vector2 position)
         {
             Name = name;
             Position = position;
+            Direction = new Vector2(0, 0);
+            Score = 0;
+            LastProjectile = 0;
+            Defeated = false;
+
             ControlState = new Dictionary<string, PlayerControl>();
-            lastProjectile = 0;
             Manager = manager;
-            ProjectileBuffer = new List<PlayerAction>();
-            foreach (var control in new string[] { "up", "down", "left", "right", "sprinting", "sneaking" }) 
+            ProjectileBuffer = new Queue<PlayerAction>();
+
+            foreach (var control in CONTROL_NAMES) 
             {
-                ControlState.Add(control, new PlayerControl(GameStateManager.ACCELERATION));
+                ControlState.Add(control, new PlayerControl(ACCELERATION));
             }
         }
 
@@ -43,20 +55,22 @@ namespace StatelessClientTest.Game
 
         public void Update(float timeDelta)
         {   
-            // control state
-
             foreach (var control in ControlState.Values)
             {
                 control.Update(timeDelta);
             }
 
-            // movement
+            UpdateMovement(timeDelta);
+            CheckIfShouldFire();
+        }
 
-            float speed = GameStateManager.BASE_SPEED;
+        public void UpdateMovement(float timeDelta)
+        {
+            float speed = BASE_SPEED;
             float sprinting = ControlState["sprinting"].Value;
-            speed = speed * (1 - sprinting) + GameStateManager.SPRINT_SPEED * sprinting;
+            speed = speed * (1 - sprinting) + SPRINT_SPEED * sprinting;
             float sneaking = ControlState["sneaking"].Value;
-            speed = speed * (1 - sneaking)  + GameStateManager.SNEAK_SPEED * sneaking;
+            speed = speed * (1 - sneaking) + SNEAK_SPEED * sneaking;
 
             Vector2 movement_direction = new Vector2(0f);
             movement_direction += new Vector2(0f, 1f) * ControlState["up"].Value;
@@ -73,16 +87,19 @@ namespace StatelessClientTest.Game
             movement *= timeDelta * speed;
             Position += movement;
 
-            Position.X = Math.Clamp(Position.X, 0, GameStateManager.PLAY_AREA.X);
-            Position.Y = Math.Clamp(Position.Y, 0, GameStateManager.PLAY_AREA.Y);
+            Position = new Vector2(
+                Math.Clamp(Position.X, 0, GameStateManager.PLAY_AREA_SIZE.X),
+                Math.Clamp(Position.Y, 0, GameStateManager.PLAY_AREA_SIZE.Y)
+            );
+        }
 
-            // projectile buffer
-
+        public void CheckIfShouldFire()
+        {
             lock (ProjectileBuffer)
             {
                 while (ProjectileBuffer.Count > 0)
                 {
-                    var projectile_action = (FireProjectileAction)ProjectileBuffer[0];
+                    var projectile_action = (FireProjectileAction)ProjectileBuffer.Peek();
 
                     var target = projectile_action.Target;
                     if (target == Position)
@@ -90,23 +107,73 @@ namespace StatelessClientTest.Game
 
                     long fire_time = Manager.Timer.ElapsedTicks;
 
-                    if ((fire_time - lastProjectile) / (float)Stopwatch.Frequency < GameStateManager.PROJ_RATE)
+                    if ((fire_time - LastProjectile) / (float)Stopwatch.Frequency < FIRE_RATE)
                         break;
 
-                    ProjectileBuffer.RemoveAt(0);
+                    ProjectileBuffer.Dequeue();
 
                     Manager.SendProjectile(this, target);
-                    lastProjectile = fire_time;
+                    LastProjectile = fire_time;
                 }
-
             }
         }
+
         public void TryFireProjectile(Vector2 target)
         {
+            if (Defeated)
+                return;
+
             lock (ProjectileBuffer)
             {
                 if (ProjectileBuffer.Count < MAX_BUFFERED_ACTIONS)
-                    ProjectileBuffer.Add(new FireProjectileAction(target));
+                    ProjectileBuffer.Enqueue(new FireProjectileAction(target));
+            }
+        }
+
+        public void SetInputs(Dictionary<string, bool> inputMap)
+        {
+            if (Defeated)
+                return;
+
+            foreach (var control in ControlState.Keys)
+            {
+                if (inputMap.ContainsKey(control))
+                {
+                    ControlState[control].Pressed = inputMap[control];
+                }
+            }
+        }
+
+        public void Defeat()
+        {
+            Defeated = true;
+            foreach (var control in CONTROL_NAMES)
+            {
+                ControlState[control].Pressed = false;
+            }
+        }
+
+        public void Revive(Vector2 position)
+        {
+            Defeated = false;
+            Position = position;
+            foreach (var control in CONTROL_NAMES)
+            {
+                ControlState[control].Reset();
+            }
+        }
+
+        public bool ShouldDestroy()
+        {
+            return false;
+        }
+
+        public void Collide(GameEntity other)
+        {
+            if (other is Projectile && ((Projectile)other).Firer != this)
+            {
+                Defeat();
+                ((Projectile)other).Firer.Score += 1;
             }
         }
     }
@@ -130,6 +197,12 @@ namespace StatelessClientTest.Game
             else
                 Value -= ControlAttenuation * timeDelta;
             Value = Math.Clamp(Value, 0, 1);
+        }
+
+        public void Reset()
+        {
+            Pressed = false;
+            Value = 0;
         }
     }
 

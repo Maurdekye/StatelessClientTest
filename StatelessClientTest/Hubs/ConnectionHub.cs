@@ -28,7 +28,7 @@ namespace StatelessClientTest.Hubs
         {
             var userid = Context.UserIdentifier;
 
-            GameManager.RegisterPlayerIfNotRegistered(userid, Context.User.Identity.Name);
+            GameManager.TryAddNewPlayer(userid, Context.User.Identity.Name);
             GameManager.RegisterUserConnection(userid, Context.ConnectionId);
         }
 
@@ -39,7 +39,7 @@ namespace StatelessClientTest.Hubs
 
         public async Task<Vector2> GetPlayAreaDimensions()
         {
-            return Game.GameStateManager.PLAY_AREA;
+            return Game.GameStateManager.PLAY_AREA_SIZE;
         }
 
         public async Task SendProjectile(Vector2 target)

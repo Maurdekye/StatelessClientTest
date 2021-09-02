@@ -13,23 +13,22 @@ namespace StatelessClientTest.Game
     public class GameStateManager
     {
         public const int TICK_RATE = 1000 / 128;
-        public const int REPORT_RATE = 1000 / 60;
-        public const float ACCELERATION = 3f;
-        public const float SNEAK_SPEED = 0.6f;
-        public const float BASE_SPEED = 1.5f;
-        public const float SPRINT_SPEED = 3f;
-        public const float PROJ_SPEED = 12f;
-        public const float PROJ_RATE = 0.25f;
-        public static Vector2 PLAY_AREA = new Vector2(10, 10);
+        public const int REPORT_RATE = 1000 / 4;
+        public static Vector2 PLAY_AREA_SIZE = new Vector2(10, 10);
 
         private IHubContext<ConnectionHub> Hub;
 
         private Dictionary<string, string> ActiveConnections;
+        private Queue<GameEntity> NewEntityBuffer;
+        public Dictionary<string, GamePlayer> Players;
         public GameState State { get; private set; }
         public Stopwatch Timer { get; private set; }
 
-        private readonly object PlayerLock = new object();
-        private readonly object ProjectileLock = new object();
+        private readonly object ConnectionAccessLock = new object();
+
+        // always acquire PlayerAccessLock > EntityAccessLock
+        private readonly object PlayerAccessLock = new object();
+        private readonly object EntityAccessLock = new object();
 
 
         public GameStateManager(IHubContext<ConnectionHub> hub)
@@ -38,6 +37,8 @@ namespace StatelessClientTest.Game
 
             State = new GameState();
             ActiveConnections = new Dictionary<string, string>();
+            NewEntityBuffer = new Queue<GameEntity>();
+            Players = new Dictionary<string, GamePlayer>();
             Timer = new Stopwatch();
 
             Timer.Start();
@@ -45,20 +46,9 @@ namespace StatelessClientTest.Game
             _ = ReportingThread();
         }
 
-        public void RegisterPlayerIfNotRegistered(string userid, string name)
-        {
-            lock (PlayerLock)
-            {
-                if (!State.Players.ContainsKey(userid))
-                {
-                    State.Players.Add(userid, new GamePlayer(this, name, PLAY_AREA / 2));
-                }
-            }
-        }
-
         public void RegisterUserConnection(string userid, string connectionid)
         {
-            lock (ActiveConnections)
+            lock (ConnectionAccessLock)
             {
                 ActiveConnections.TryAdd(connectionid, userid);
             }
@@ -66,9 +56,39 @@ namespace StatelessClientTest.Game
 
         public void UnregisterUserConnection(string connectionid)
         {
-            lock (ActiveConnections)
+            lock (ConnectionAccessLock)
             {
                 ActiveConnections.Remove(connectionid);
+            }
+        }
+
+        public void TryAddNewPlayer(string userid, string name)
+        {
+            lock (PlayerAccessLock)
+            {
+                if (!Players.ContainsKey(userid))
+                {
+                    var new_player = new GamePlayer(this, name, PLAY_AREA_SIZE / 2);
+                    Players.Add(userid, new_player);
+                    QueueNewEntity(new_player);
+                }
+            }
+        }
+
+        public void RemovePlayer(string userid)
+        {
+            lock (PlayerAccessLock)
+            {
+                if (Players.ContainsKey(userid))
+                {
+                    GamePlayer player = Players[userid];
+                    Players.Remove(userid);
+
+                    lock (EntityAccessLock)
+                    {
+                        State.Entities.Remove(player);
+                    }
+                }
             }
         }
 
@@ -98,7 +118,7 @@ namespace StatelessClientTest.Game
             {
                 while (true)
                 {
-                    lock (PlayerLock) lock (ProjectileLock)
+                    lock (EntityAccessLock)
                     {
                         _ = Hub.Clients.All.SendAsync("GameStateReport", new { Timestamp = Timer.ElapsedTicks, State });
                     }
@@ -113,69 +133,88 @@ namespace StatelessClientTest.Game
 
         private void SimulationStep(float timeDelta)
         {
-            lock (PlayerLock)
+            // state updates
+            lock (EntityAccessLock)
             {
-                foreach (GamePlayer player in State.Players.Values)
+                foreach (GameEntity entity in State.Entities)
                 {
-                    player.Update(timeDelta);
+                    entity.Update(timeDelta);
                 }
+                State.Entities.RemoveAll(p => p.ShouldDestroy());
+                while (NewEntityBuffer.Count > 0)
+                    State.Entities.Add(NewEntityBuffer.Dequeue());
             }
 
-            lock (ProjectileLock)
+            // collision checks
+            lock (EntityAccessLock)
             {
-                foreach (Projectile ent in State.Projectiles)
+                foreach (GameEntity entity1 in State.Entities)
                 {
-                    ent.Update(timeDelta);
+                    foreach (GameEntity entity2 in State.Entities.SkipWhile(e => e != entity1).Skip(1))
+                    {
+                        var sq_dist = entity1.Radius + entity2.Radius;
+                        sq_dist *= sq_dist;
+                        if (Vector2.DistanceSquared(entity1.Position, entity2.Position) < sq_dist)
+                        {
+                            entity1.Collide(entity2);
+                            entity2.Collide(entity1);
+                        }
+                    }
                 }
-                State.Projectiles.RemoveAll(p => p.ShouldDestroy());
             }
         }
 
         public void PlayerControlUpdate(string userid, Dictionary<string, bool> controlState)
         {
-            if (State.Players.ContainsKey(userid))
+            lock (PlayerAccessLock)
             {
-                foreach (var control in State.Players[userid].ControlState.Keys)
+                if (Players.ContainsKey(userid))
                 {
-                    if (controlState.ContainsKey(control))
+                    lock (EntityAccessLock)
                     {
-                        lock (PlayerLock)
-                        {
-                            State.Players[userid].ControlState[control].Pressed = controlState[control];
-                        }
+                        Players[userid].SetInputs(controlState);
                     }
                 }
             }
         }
         public void TryFireProjectile(string userid, Vector2 target)
         {
-            lock (PlayerLock)
+            lock (PlayerAccessLock)
             {
-                if (State.Players.ContainsKey(userid))
+                if (Players.ContainsKey(userid))
                 {
-                    State.Players[userid].TryFireProjectile(target);
+                    lock (EntityAccessLock)
+                    {
+                        Players[userid].TryFireProjectile(target);
+                    }
                 }
+            }
+        }
+
+        public void QueueNewEntity(GameEntity entity)
+        {
+            lock (EntityAccessLock)
+            {
+                NewEntityBuffer.Enqueue(entity);
             }
         }
 
         public void SendProjectile(GamePlayer sender, Vector2 target)
         {
-            lock (ProjectileLock)
+            lock (EntityAccessLock)
             {
                 var new_projectile = new Projectile(sender, sender.Position, target - sender.Position);
-                State.Projectiles.Add(new_projectile);
+                QueueNewEntity(new_projectile);
             }
         }
 
         public class GameState
         {
-            public Dictionary<string, GamePlayer> Players;
-            public List<Projectile> Projectiles;
+            public List<GameEntity> Entities;
 
             public GameState()
             {
-                Players = new Dictionary<string, GamePlayer>();
-                Projectiles = new List<Projectile>();
+                Entities = new List<GameEntity>();
             }
         }
     }

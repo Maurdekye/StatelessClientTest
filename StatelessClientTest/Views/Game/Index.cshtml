@@ -87,39 +87,36 @@
             }
             
             function updateGameState(gameState) {
-                //console.log(gameState);
+/*                console.log(gameState);*/
                 pen.clearRect(0, 0, canv.width, canv.height);
 
-                // draw players
-                pen.fillStyle = "#000";
-                for (let id in gameState.players) {
-                    let player = gameState.players[id];
-                    let ply_pos = toCanvasSpace(player.position);
+                for (let entity of gameState.entities) {
+                    // draw players
+                    if (entity.entityType === "Player") {
+                        let player = entity;
+                        
+                        let pos = toCanvasSpace(player.position);
 
-                    pen.beginPath();
-                    pen.arc(ply_pos.x, ply_pos.y, 4, 0, Math.PI * 2);
-                    pen.fill();
+                        pen.fillStyle = "#000";
+                        pen.beginPath();
+                        pen.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+                        pen.fill();
 
-                    //let arrow_pos = toCanvasSpace(addVec(player.position, scaleVec(player.direction, 0.5)));
-                    //pen.beginPath();
-                    //pen.moveTo(ply_pos.x, ply_pos.y);
-                    //pen.lineTo(arrow_pos.x, arrow_pos.y);
-                    //pen.stroke();
+                        pen.font = '8pt Arial';
+                        pen.fillText(player.name, pos.x - (pen.measureText(player.name).width / 2), pos.y - 10);
 
-                    pen.font = '8pt Arial';
-                    pen.fillText(player.name, ply_pos.x - (pen.measureText(player.name).width / 2), ply_pos.y - 10);
-                }
+                    // draw projectiles
+                    } else if (entity.entityType === "Projectile") {
+                        let projectile = entity;
 
-                // draw projectiles
-                pen.strokeStyle = "#800";
-                for (let proj of gameState.projectiles) {
-                    let a = toCanvasSpace(subVec(proj.position, scaleVec(proj.direction, 0.1)));
-                    let b = toCanvasSpace(addVec(proj.position, scaleVec(proj.direction, 0.1)));
-                    pen.beginPath()
-                    //pen.arc(pos.x, pos.y, 2, 0, Math.PI * 2);
-                    pen.moveTo(a.x, a.y);
-                    pen.lineTo(b.x, b.y);
-                    pen.stroke();
+                        pen.strokeStyle = "#800";
+                        let a = toCanvasSpace(subVec(projectile.position, scaleVec(projectile.direction, 0.1)));
+                        let b = toCanvasSpace(addVec(projectile.position, scaleVec(projectile.direction, 0.1)));
+                        pen.beginPath()
+                        pen.moveTo(a.x, a.y);
+                        pen.lineTo(b.x, b.y);
+                        pen.stroke();
+                    }
                 }
             }
             
