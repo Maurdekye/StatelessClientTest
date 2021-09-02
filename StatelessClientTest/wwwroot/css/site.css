@@ -96,16 +96,20 @@ body {
     text-align: center;
 }
 
-#revive-button {
+input[type=button], button {
     padding: 10px 20px;
     border: 2px solid #000;
     border-radius: 4px;
     text-decoration: none;
     text-align: center;
     font-family: Arial;
-    color: #b1b1b1;
+    color: black;
     font-size: 24pt;
     transition: all 0.08s;
+}
+
+#quit-button:hover {
+    background-color: #7d7d7d
 }
 
 #revive-button:disabled {

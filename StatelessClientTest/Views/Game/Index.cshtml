@@ -30,7 +30,17 @@
         </div>
         <div class="flex"></div>
     </div>
-    <div class="flex"></div>
+    <div class="flex hflex">
+        <div class="flex"></div>
+        <div class="vflex">
+            <div class="flex"></div>
+            <div>
+                <input type="button" value="Quit" id="quit-button"/>
+            </div>
+            <div class="flex"></div>
+        </div>
+        <div class="flex"></div>
+    </div>
 </div>
 
 @section Scripts{
@@ -195,6 +205,11 @@
 
             $("#revive-button").click(() => {
                 connection.invoke("Revive");
+            });
+
+            $("#quit-button").click(async () => {
+                await connection.invoke("UnregisterUser");
+                window.location = "/Home";
             });
             
         });

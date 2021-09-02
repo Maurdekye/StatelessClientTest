@@ -32,6 +32,12 @@ namespace StatelessClientTest.Hubs
             GameManager.RegisterUserConnection(userid, Context.ConnectionId);
         }
 
+        public async Task UnregisterUser()
+        {
+            var userid = Context.UserIdentifier;
+            GameManager.RemovePlayer(userid);
+        }
+
         public async Task UpdateControlState(Dictionary<string, bool> newState)
         {
             GameManager.PlayerControlUpdate(Context.UserIdentifier, newState);
@@ -47,19 +53,9 @@ namespace StatelessClientTest.Hubs
             GameManager.TryFireProjectile(Context.UserIdentifier, target);
         }
 
-        public async Task<string> GetName()
-        {
-            return Context.User.Identity.Name;
-        }
-
         public async Task<string> GetId()
         {
             return Context.UserIdentifier;
-        }
-
-        public async Task<string> GetConnectionId()
-        {
-            return Context.ConnectionId;
         }
 
         public async Task Revive()

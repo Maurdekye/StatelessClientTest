@@ -4,28 +4,12 @@
 
 <div class="text-center">
     <h1 class="display-4">This is the home page</h1>
-    @if (User.Identity.IsAuthenticated)
+    @if (!User.Identity.IsAuthenticated)
     {
-        <p>Click to get your client name: <input type="button" value="Get Name" id="get-name" /> <span id="name-result"></span></p>
-        <p>Click to get your connection id: <input type="button" value="Get Id" id="get-id" /> <span id="id-result"></span></p>
+        <p>Please log in to view the game page</p>
+    }
+    else
+    {
+        <a class="nav-link text-dark" asp-area="" asp-controller="Game" asp-action="Index">Click here to visit the game page</a>
     }
 </div>
-
-@section Scripts{
-    <script type="text/javascript">
-        $(async () => {
-            var connection = new signalR.HubConnectionBuilder().withUrl("/conhub").build();
-            await connection.start();
-
-            $("#get-name").click(async () => {
-                let name = await connection.invoke("GetName");
-                $("#name-result").html(`Your name is ${name}`);
-            });
-
-            $("#get-id").click(async () => {
-                let id = await connection.invoke("GetConnectionId");
-                $("#id-result").html(`Your connection id is ${id}`);
-            });
-        });
-    </script>
-}
