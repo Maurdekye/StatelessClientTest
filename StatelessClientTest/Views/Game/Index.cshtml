@@ -3,8 +3,8 @@
     ViewData["Title"] = "Game Page";
 }
 
-<div class="vflex" id="container">
-    <div class="flex hflex">
+<div class="hflex" id="container">
+    <div class="flex vflex">
         <div class="flex"></div>
         <div>
             <h2 id="score-display" class="counter-text">Score: 0</h2>
@@ -14,7 +14,7 @@
             <h2 id="death-display" class="counter-text">Deaths: 0</h2>
         </div>
         <div class="flex"></div>
-        <div class="vflex">
+        <div class="hflex">
             <div class="flex"></div>
             <div>
                 <input type="button" value="Revive" id="revive-button" disabled />
@@ -23,19 +23,27 @@
         </div>
         <div class="flex"></div>
     </div>
-    <div class="hflex">
+    <div class="vflex">
         <div class="flex"></div>
         <div>
             <canvas id="game-window" width="500" height="500"></canvas>
         </div>
         <div class="flex"></div>
     </div>
-    <div class="flex hflex">
+    <div class="flex vflex">
         <div class="flex"></div>
-        <div class="vflex">
+        <div class="flex4 hflex">
+            <div class="flex"></div>
+            <div id="player-table-container">
+
+            </div>
+            <div class="flex"></div>
+        </div>
+        <div class="flex"></div>
+        <div class="hflex">
             <div class="flex"></div>
             <div>
-                <input type="button" value="Quit" id="quit-button"/>
+                <input type="button" value="Quit" id="quit-button" />
             </div>
             <div class="flex"></div>
         </div>
@@ -117,57 +125,83 @@
                 control_state[control] = false;
                 reverse_binds[control] = (reverse_binds[control] || []).concat([code]);
             }
+
+            function drawPlayer(player) {
+                let pos = toCanvasSpace(player.position);
+                let radius = toCanvasScale(player.radius);
+
+                pen.beginPath();
+                if (player.defeated) {
+                    pen.moveTo(pos.x - radius, pos.y - radius);
+                    pen.lineTo(pos.x + radius, pos.y + radius);
+                    pen.moveTo(pos.x + radius, pos.y - radius);
+                    pen.lineTo(pos.x - radius, pos.y + radius);
+                    pen.strokeStyle = "#000";
+                    pen.stroke();
+                } else {
+                    pen.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                    pen.fillStyle = "#000";
+                    pen.fill();
+                }
+
+                pen.font = '8pt Arial';
+                pen.fillStyle = "#000";
+                pen.fillText(player.name, pos.x - (pen.measureText(player.name).width / 2), pos.y - radius - 6);
+
+                if (player.id === id) {
+                    $("#score-display").html(`Score: ${player.score}`);
+                    $("#death-display").html(`Deaths: ${player.deaths}`);
+                    $("#revive-button").prop("disabled", !player.defeated);
+                }
+            }
+
+            function drawProjectile(projectile) {
+                let radius = toCanvasScale(projectile.radius);
+                let length = projectile.speed * projectile.radius;
+                let a = toCanvasSpace(subVec(projectile.position, scaleVec(projectile.direction, length)));
+                let b = toCanvasSpace(addVec(projectile.position, scaleVec(projectile.direction, length)));
+
+                pen.beginPath()
+                pen.moveTo(a.x, a.y);
+                pen.lineTo(b.x, b.y);
+                pen.strokeStyle = "#800";
+                pen.stroke();
+            }
+
+            function renderPlayerTable(playerList) {
+                var table = `
+                    <table>
+                        <tr>
+                            <th>Player</th>
+                            <th>Score</th>
+                            <th>Deaths</th>
+                        </tr>`;
+                for (var entity of playerList) {
+                    if (entity.entityType === "Player") {
+                        table += `
+                        <tr>
+                            <td>${entity.name}</td>
+                            <td>${entity.score}</td>
+                            <td>${entity.deaths}</td>
+                        </td>`;
+                    }
+                }
+                table += `</table>`;
+                $("#player-table-container").html(table);
+            }
             
             function updateGameState(gameState) {
                 pen.clearRect(0, 0, canv.width, canv.height);
 
-                for (let entity of gameState.entities) {
-                    let radius = toCanvasScale(entity.radius);
-
-                    // draw players
+                for (var entity of gameState.entities) {
                     if (entity.entityType === "Player") {
-                        let player = entity;
-                        
-                        let pos = toCanvasSpace(player.position);
-
-                        pen.beginPath();
-                        if (player.defeated) {
-                            pen.moveTo(pos.x - radius, pos.y - radius);
-                            pen.lineTo(pos.x + radius, pos.y + radius);
-                            pen.moveTo(pos.x + radius, pos.y - radius);
-                            pen.lineTo(pos.x - radius, pos.y + radius);
-                            pen.strokeStyle = "#000";
-                            pen.stroke();
-                        } else {
-                            pen.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-                            pen.fillStyle = "#000";
-                            pen.fill();
-                        }
-
-                        pen.font = '8pt Arial';
-                        pen.fillStyle = "#000";
-                        pen.fillText(player.name, pos.x - (pen.measureText(player.name).width / 2), pos.y - radius - 6);
-
-                        if (player.id === id) {
-                            $("#score-display").html(`Score: ${player.score}`);
-                            $("#death-display").html(`Deaths: ${player.deaths}`);
-                            $("#revive-button").prop("disabled", !player.defeated);
-                        }
-
-                    // draw projectiles
+                        drawPlayer(entity);
                     } else if (entity.entityType === "Projectile") {
-                        let projectile = entity;
-
-                        let length = projectile.speed * projectile.radius;
-                        let a = toCanvasSpace(subVec(projectile.position, scaleVec(projectile.direction, length)));
-                        let b = toCanvasSpace(addVec(projectile.position, scaleVec(projectile.direction, length)));
-                        pen.beginPath()
-                        pen.moveTo(a.x, a.y);
-                        pen.lineTo(b.x, b.y);
-                        pen.strokeStyle = "#800";
-                        pen.stroke();
+                        drawProjectile(entity);
                     }
                 }
+
+                renderPlayerTable(gameState.entities);
             }
 
             await connection.invoke("RegisterUser");

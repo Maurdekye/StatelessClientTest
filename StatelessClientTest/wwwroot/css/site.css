@@ -70,18 +70,22 @@ body {
   line-height: 60px; /* Vertically center the text there */
 }
 
-.hflex {
+.vflex {
     display: flex;
     flex-flow: column;
 }
 
-.vflex {
+.hflex {
     display: flex;
     flex-flow: row;
 }
 
 .flex {
     flex: 1;
+}
+
+.flex4 {
+    flex: 4;
 }
 
 #container {
@@ -126,4 +130,14 @@ input[type=button], button {
 #revive-button:hover:active {
     color: #000;
     background-color: #dbfeff;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+td, th {
+    border: 2px solid #747474;
+    padding: 5px 8px;
+    text-align: center;
 }
