@@ -104,7 +104,7 @@ body {
     border: 1px solid black;
 }
 
-.counter-text {
+.counter-text, .confirm-text {
     text-align: center;
 }
 
@@ -120,7 +120,7 @@ input[type=button], button {
     transition: all 0.08s;
 }
 
-#quit-button:hover {
+button:hover {
     background-color: #7d7d7d
 }
 
@@ -152,4 +152,14 @@ td, th {
 
 .thin-spacer {
     min-width: 20px;
+}
+
+#quit-confirm-container {
+    transition: height 0.8s ease-in-out;
+}
+
+.hidden * {
+    opacity: 0;
+    height: 0 !important;
+    flex: none !important;
 }

@@ -47,6 +47,23 @@
             </div>
             <div class="flex"></div>
         </div>
+        <div class="vflex flex hidden" id="quit-confirm-container">
+            <div>
+                <h2 class="confirm-text">Are you sure?</h2>
+            </div>
+            <div class="flex"></div>
+            <div class="hflex">
+                <div class="flex"></div>
+                <div>
+                    <input type="button" value="Yes" id="quit-confirm-button" />
+                </div>
+                <div class="flex"></div>
+                <div>
+                    <input type="button" value="No" id="quit-deny-button" />
+                </div>
+                <div class="flex"></div>
+            </div>
+        </div>
         <div class="flex"></div>
     </div>
 </div>
@@ -157,7 +174,6 @@
             }
 
             function drawProjectile(projectile) {
-                let radius = toCanvasScale(projectile.radius);
                 let length = projectile.speed * projectile.radius;
                 let a = toCanvasSpace(subVec(projectile.position, scaleVec(projectile.direction, length)));
                 let b = toCanvasSpace(addVec(projectile.position, scaleVec(projectile.direction, length)));
@@ -242,11 +258,20 @@
                 connection.invoke("Revive");
             });
 
-            $("#quit-button").click(async () => {
+            $("#quit-button").click(() => {
+                console.log("Are you sure?");
+                $("#quit-confirm-container").removeClass("hidden");
+            });
+
+            $("#quit-deny-button").click(() => {
+                $("#quit-confirm-container").addClass("hidden");
+            });
+
+            $("#quit-confirm-button").click(async () => {
                 await connection.invoke("UnregisterUser");
                 window.location = "/Home";
             });
-            
+
         });
     </script>
 }
