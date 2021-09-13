@@ -3,68 +3,31 @@
     ViewData["Title"] = "Game Page";
 }
 
-<div class="hflex" id="container">
-    <div class="flex vflex">
-        <div class="flex"></div>
-        <div>
-            <h2 id="score-display" class="counter-text">Score: 0</h2>
-        </div>
-        <div class="flex"></div>
-        <div>
-            <h2 id="death-display" class="counter-text">Deaths: 0</h2>
-        </div>
-        <div class="flex"></div>
-        <div class="hflex">
-            <div class="flex"></div>
-            <div>
-                <input type="button" value="Revive" id="revive-button" disabled />
-            </div>
-            <div class="flex"></div>
-        </div>
-        <div class="flex"></div>
+<div class="hflex distribute-content" id="container">
+    <div class="vflex distribute-content">
+        <h2 id="score-display" class="counter-text">Score: 0</h2>
+        <h2 id="death-display" class="counter-text">Deaths: 0</h2>
+        <input type="button" value="Revive" id="revive-button" disabled />
     </div>
-    <div class="thin-spacer"></div>
-    <div class="vflex">
-        <div class="flex"></div>
-        <div>
-            <canvas id="game-window" width="500" height="500"></canvas>
-        </div>
-        <div class="flex"></div>
+    <div class="center-content">
+        <canvas id="game-window" width="500" height="500"></canvas>
     </div>
-    <div class="thin-spacer"></div>
-    <div class="flex vflex">
-        <div class="flex"></div>
-        <div class="flex4 hflex">
-            <div class="flex"></div>
-            <div id="player-table-container"></div>
-            <div class="flex"></div>
-        </div>
-        <div class="flex"></div>
-        <div class="hflex">
-            <div class="flex"></div>
+    <div class="vflex center-content distribute-content">
+        <div id="player-table-container"></div>
+        <div class="vflex center-content">
             <div>
                 <input type="button" value="Quit" id="quit-button" />
             </div>
-            <div class="flex"></div>
-        </div>
-        <div class="vflex flex hidden" id="quit-confirm-container">
-            <div>
-                <h2 class="confirm-text">Are you sure?</h2>
-            </div>
-            <div class="flex"></div>
-            <div class="hflex">
-                <div class="flex"></div>
-                <div>
-                    <input type="button" value="Yes" id="quit-confirm-button" />
+            <div style="min-height:118px">
+                <div class="vflex hidden" id="quit-confirm-container">
+                    <h2 class="confirm-text">Are you sure?</h2>
+                    <div class="hflex distribute-content">
+                        <input type="button" value="Yes" id="quit-confirm-button" />
+                        <input type="button" value="No" id="quit-deny-button" />
+                    </div>
                 </div>
-                <div class="flex"></div>
-                <div>
-                    <input type="button" value="No" id="quit-deny-button" />
-                </div>
-                <div class="flex"></div>
             </div>
         </div>
-        <div class="flex"></div>
     </div>
 </div>
 

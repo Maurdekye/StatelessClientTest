@@ -163,3 +163,14 @@ td, th {
     height: 0 !important;
     flex: none !important;
 }
+
+.center-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.distribute-content {
+    display: flex;
+    justify-content: space-evenly;
+}
